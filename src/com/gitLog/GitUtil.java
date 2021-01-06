@@ -175,14 +175,16 @@ public class GitUtil {
 					.setOldTree(oldTreeIter)
 					.call();
 
-			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			DiffFormatter df = new DiffFormatter(out);
-			df.setRepository(git.getRepository());
+
 
 			for (DiffEntry diffEntry : diffs) {
+				ByteArrayOutputStream out = new ByteArrayOutputStream();
+				DiffFormatter df = new DiffFormatter(out);
+				df.setRepository(git.getRepository());
 				df.format(diffEntry);
 				String diffText = out.toString("UTF-8");
 				System.out.println(diffText);
+				System.out.println("---------------");
 				//  out.reset();
 			}
 		} catch (IOException e) {

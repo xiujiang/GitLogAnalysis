@@ -10,22 +10,27 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.TreeWalk;
 
-import java.io.File;
+import java.io.*;
 import java.util.*;
 
 public class Main {
 
 
     public static void main(String[] args) throws Exception {
-        System.out.println(new File("/Users/joel/IdeaProjects2/gitLog" + File.separator + "MyBlog/").isDirectory());
-        File file = new File("/Users/joel/IdeaProjects2/gitLog" + File.separator + "MyBlog/.git");
-        System.out.println( file.exists());
-        GitUtil gitUtil = new GitUtil("liuxiujiang","Lxj@qq.com.1234","http://git.dangdang.com/fission/freetry-api.git","freetry-api","master");
-        ArrayList<HashMap<String, Object>> gitVersion = gitUtil.getGitVersion();
-        HashMap<String, Object> commitLogList = gitUtil.getCommitLogList("5fda70b7bca8afc296c7e1da52d07302ccb1ac41");
-        System.out.println(gitVersion);
-        System.out.println(commitLogList);
+        //1.连接git
+        GitUtil gitUtil = new GitUtil("liuxiujiang","Lxj123456","https://github.com/xiujiang/trainGitLogProj.git","trainGitLogProj","main");
+        //2.根据git获取最新变更记录
 
-        gitUtil.diffMethod("7aaf43c73e729b360699fcdeb65d5447bf526c02"+"^{tree}","60600c9cf682a47bedc611c4f31310f131c1daa3"+"^{tree}");
+        //3.解析gitlog
+        //4.根据log 分析变更
+        //5.输出变更信息
+
+        ArrayList<HashMap<String, Object>> gitVersion = gitUtil.getGitVersion();
+//        HashMap<String, Object> commitLogList = gitUtil.getCommitLogList("5fda70b7bca8afc296c7e1da52d07302ccb1ac41");
+        System.out.println(gitVersion);
+//        System.out.println(commitLogList);
+        gitUtil.diffMethod("63ed0c2e611e9488752c7d04a5c22c6ac56c7a93"+"^{tree}","947bfac6a84695b95afe1ab4312723677babbd0a"+"^{tree}");
+
+
     }
 }
