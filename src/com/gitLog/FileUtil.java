@@ -4,11 +4,8 @@ import java.io.*;
 import java.util.Map;
 
 public class FileUtil {
-
-
-    public Map<String,String> getFile() throws IOException {
-        File file = new File("/Users/joel/IdeaProjects2/gitLog/trainGitLogProj/src/main/java/com/blog/controller/ArticleController.java");
-        System.out.println(file.exists());
+    public Map<String,String> getFile(String fileName) throws IOException {
+        File file = new File("/Users/joel/IdeaProjects2/gitLog/trainGitLogProj/"+fileName);
         String s = null;
         FileReader fileReader = new FileReader(file);
         BufferedReader bfr = new BufferedReader(fileReader);

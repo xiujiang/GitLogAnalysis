@@ -1,5 +1,7 @@
 package com.gitLog;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.NoHeadException;
@@ -16,10 +18,9 @@ import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.util.StringUtils;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 public class GitUtil {
@@ -110,6 +111,36 @@ public class GitUtil {
 		return list;
 	}
 
+	/**
+	 * @方法简介: 获取最近两次提交记录
+	 */
+	public List<DiffEntry> getLastCommitDiff()
+			throws NoHeadException, GitAPIException, Exception {
+		Iterable<RevCommit> logIterable = this.git.log().call();
+		Iterator<RevCommit> logIterator = logIterable.iterator();//获取所有版本号的迭代器
+
+		if (logIterator == null) {
+			return null;
+		}
+		int row = 0;
+		ArrayList<HashMap<String, Object>> list = new ArrayList<HashMap<String, Object>>();
+		while (logIterator.hasNext()) {
+			HashMap<String, Object> map = new HashMap<String, Object>();
+			RevCommit commit = logIterator.next();
+			Date commitDate = commit.getAuthorIdent().getWhen();     //提交时间
+			String commitPerson = commit.getAuthorIdent().getName() ;    //提交人
+			String commitID = commit.getName();    //提交的版本号（之后根据这个版本号去获取对应的详情记录）
+			map.put("version", commitID);
+			map.put("commitDate", commitDate);
+			map.put("commitPerson", commitPerson);
+			list.add(row, map);
+			row++;
+		}
+
+		List<DiffEntry> diffEntries = diffMethod(list.get(0).get("version").toString() + "^{tree}", list.get(1).get("version").toString() + "^{tree}");
+		return diffEntries;
+	}
+
 
 	/**
 	 * @方法简介 :根据指定版本号获取版本号下面的详情记录
@@ -159,7 +190,7 @@ public class GitUtil {
 		return map;
 	}
 
-	public void diffMethod(String oldP, String headP){
+	public List<DiffEntry> diffMethod(String oldP, String headP){
 		Repository repository=git.getRepository();
 		ObjectReader reader = repository.newObjectReader();
 		CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
@@ -174,9 +205,6 @@ public class GitUtil {
 					.setNewTree(newTreeIter)
 					.setOldTree(oldTreeIter)
 					.call();
-
-
-
 			for (DiffEntry diffEntry : diffs) {
 				ByteArrayOutputStream out = new ByteArrayOutputStream();
 				DiffFormatter df = new DiffFormatter(out);
@@ -187,10 +215,179 @@ public class GitUtil {
 				System.out.println("---------------");
 				//  out.reset();
 			}
+			return diffs;
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		return null;
 	}
+
+
+	public void parseGitLog(List<DiffEntry> diffEntries) throws IOException {
+		if(diffEntries == null){
+			return;
+		}
+		for (DiffEntry diffEntry : diffEntries) {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			DiffFormatter df = new DiffFormatter(out);
+			df.setRepository(git.getRepository());
+			df.format(diffEntry);
+			ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(out.toByteArray());
+			BufferedReader bfr = new BufferedReader(new InputStreamReader(byteArrayInputStream));
+			String s = null;
+			File file = null;
+			List<LogObj> modifInfo = new ArrayList<>();
+			while((s = bfr.readLine()) != null){
+				String fileName = getDiffFileName(s);
+				if(fileName != null && !fileName.endsWith(".java")){
+					break;
+				}
+				if(fileName != null){
+					file = new File("/Users/joel/IdeaProjects2/gitLog/trainGitLogProj/"+fileName);
+					continue;
+				}
+				LogObj logObj = modifInfo.get(modifInfo.size()-1);
+				Integer lineNumb = getLineNumber(s);
+				if(lineNumb != null){
+					logObj = new LogObj();
+					logObj.setLineNumber(lineNumb);
+					logObj.setModify(new ArrayList<>());
+					modifInfo.add(logObj);
+					continue;
+				}
+				if(!needAdd(s)){
+					Integer lineNumber = logObj.getLineNumber();
+					logObj.setLineNumber(++lineNumber);
+				}else{
+					logObj.getModify().add(s);
+				}
+			}
+
+			if(!file.exists()){
+				continue;
+			}
+
+			for (LogObj logObj : modifInfo) {
+				FileReader fileReader = new FileReader(file);
+				BufferedReader objBfr = new BufferedReader(fileReader);
+				int line = 1;
+				String objStr = null;
+				String[] objCodes = new String[1000];
+				while((objStr = objBfr.readLine()) != null){
+					objCodes[line++] = objStr;
+				}
+
+			}
+
+		}
+	}
+
+
+	private void parseObj(List<LogObj> logObjs,String[] fileCodes,String fileName){
+		JSONObject jsonClass = new JSONObject();
+		jsonClass.put("class",fileName);
+		JSONObject jsonMethod = new JSONObject();
+		JSONObject jsonAttr = new JSONObject();
+		for (LogObj logObj : logObjs) {
+			Integer lineNumber = logObj.getLineNumber();
+
+
+		}
+	}
+
+
+
+	private boolean needAdd(String str){
+		if(str == null || "".equals(str)){
+			return false;
+		}
+		if(str.startsWith("-  ") || str.startsWith("+  ")){
+			return true;
+		}
+		return false;
+	}
+	private Integer getLineNumber(String str){
+		if(str == null || "".equals(str)){
+			return null;
+		}
+		if(str.startsWith("@@")){
+			String[] s = str.split(" ");
+			String[] lineStr = s[1].split(",");
+			Integer number = Integer.parseUnsignedInt(lineStr[0]);
+			return number;
+		}
+		return null;
+	}
+
+	private String getDiffFileName(String str){
+		if(str == null || "".equals(str)){
+			return null;
+		}
+		if(!str.startsWith("diff")){
+			return null;
+		}
+		String[] s = str.split(" ");
+		if(s.length != 4){
+			return null;
+		}
+		String fileName = s[2];
+		String replace = fileName.replace("a/", "");
+		return replace;
+
+	}
+
+
+	private class ModifyInfo{
+		private JSONObject clazz;
+		private JSONObject method;
+		private JSONObject attr;
+
+		public JSONObject getClazz() {
+			return clazz;
+		}
+
+		public void setClazz(JSONObject clazz) {
+			this.clazz = clazz;
+		}
+
+		public JSONObject getMethod() {
+			return method;
+		}
+
+		public void setMethod(JSONObject method) {
+			this.method = method;
+		}
+
+		public JSONObject getAttr() {
+			return attr;
+		}
+
+		public void setAttr(JSONObject attr) {
+			this.attr = attr;
+		}
+	}
+
+	private class LogObj{
+		private Integer lineNumber;
+		private List<String> modify;
+
+		public Integer getLineNumber() {
+			return lineNumber;
+		}
+
+		public void setLineNumber(Integer lineNumber) {
+			this.lineNumber = lineNumber;
+		}
+
+		public List<String> getModify() {
+			return modify;
+		}
+
+		public void setModify(List<String> modify) {
+			this.modify = modify;
+		}
+	}
+
 }
