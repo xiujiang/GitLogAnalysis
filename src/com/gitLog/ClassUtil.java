@@ -35,7 +35,6 @@ public class ClassUtil {
                 type = 1;
                 break;
             }
-            String.class.getMethod("A").get
 
         }
         return type;
